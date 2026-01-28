@@ -5,7 +5,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const { Sequelize, DataTypes } = require('sequelize');
 
 // Initialize Express app
@@ -23,24 +23,17 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
 
-// Email transporter setup
+// Email client setup
 let emailEnabled = false;
-let transporter;
+let resendClient;
 
-if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+if (process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL) {
   try {
-    transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
-    
+    resendClient = new Resend(process.env.RESEND_API_KEY);
     emailEnabled = true;
-    console.log('✅ Email server configured');
+    console.log('✅ Resend email client configured');
   } catch (error) {
-    console.log('❌ Email configuration error:', error.message);
+    console.log('❌ Resend configuration error:', error.message);
     console.log('📧 Using console-only mode');
   }
 } else {
@@ -184,15 +177,19 @@ const sendEmail = async (to, subject, html) => {
   }
   
   try {
-    const mailOptions = {
-      from: `SmarTQue <${process.env.EMAIL_USER}>`,
-      to,
-      subject,
-      html,
-    };
+    const { data, error } = await resendClient.emails.send({
+      from: process.env.RESEND_FROM_EMAIL,
+      to: [to],
+      subject: subject,
+      html: html,
+    });
     
-    await transporter.sendMail(mailOptions);
-    console.log(`✅ Email sent to: ${to}`);
+    if (error) {
+      console.error('❌ Resend error:', error);
+      return false;
+    }
+    
+    console.log(`✅ Email sent to: ${to} (ID: ${data.id})`);
     return true;
   } catch (error) {
     console.error('❌ Email send error:', error);
@@ -240,7 +237,7 @@ async function startServer() {
     
     // Sync database - DROP AND RECREATE to fix schema
     console.log('🔄 Syncing database tables...');
-    await sequelize.sync({ force: true }); // This will drop and recreate tables
+    await sequelize.sync({alter: true});
     console.log('✅ Database tables created');
     
     // Health check endpoint

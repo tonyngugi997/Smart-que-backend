@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String _baseUrl = 'https://f63a1006718b19.lhr.life/api';
-
+  static const String _baseUrl =
+      'https://smartque-production.up.railway.app/api';
   static Future<Map<String, dynamic>> login({
     required String email,
     required String password,

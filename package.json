@@ -1,6 +1,12 @@
 {
-  "dependencies": {
-    "dotenv": "^17.2.3",
-    "jsonwebtoken": "^9.0.3"
+  "name": "smartque",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["backend"],
+  "scripts": {
+    "start": "cd backend && npm start"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
