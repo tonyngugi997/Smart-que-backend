@@ -28,8 +28,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Set user context for appointment provider
       if (authProvider.currentUser != null && authProvider.token != null) {
+        // Ensure userId is always a String
+        final userId = (authProvider.currentUser!['id'] ?? '').toString();
         appointmentProvider.setUserContext(
-          authProvider.currentUser!['id'] ?? '',
+          userId,
           authProvider.token!,
         );
       }
