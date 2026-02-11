@@ -24,7 +24,8 @@ class Appointment {
   factory Appointment.fromJson(Map<String, dynamic> json) {
     return Appointment(
       id: json['id'].toString(),
-      userId: json['userId'] as String,
+      // Backend returns numeric userId; always store as String for comparison
+      userId: json['userId']?.toString() ?? '',
       doctorName: json['doctorName'] as String,
       departmentName: json['departmentName'] as String,
       dateTime: DateTime.parse(json['dateTime'] as String),
