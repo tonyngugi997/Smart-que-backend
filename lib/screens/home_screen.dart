@@ -107,6 +107,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+
+
+
   Widget _buildWelcomeSection(String userName) {
     return Container(
       margin: const EdgeInsets.only(bottom: 30),
@@ -786,7 +789,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Settings',
                   style: TextStyle(color: Colors.white),
                 ),
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/settings');
+                },
               ),
               ListTile(
                 leading: const Icon(Icons.help_outline, color: Colors.white70),

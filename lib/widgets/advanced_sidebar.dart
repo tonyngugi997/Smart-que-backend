@@ -91,6 +91,7 @@ class AdvancedSidebar extends StatelessWidget {
             ),
             onTap: () {
               Navigator.pop(context);
+              Navigator.pushNamed(context, '/settings');
             },
           ),
         ],

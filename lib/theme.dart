@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+// Avoid runtime font fetching; use default TextStyle to prevent network calls
 
 class AppColors {
   // Modern gradient colors
@@ -48,48 +48,56 @@ class AppTheme {
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
-        titleTextStyle: GoogleFonts.poppins(
+        titleTextStyle: const TextStyle(
           color: AppColors.textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.w700,
+          fontFamily: 'Poppins',
         ),
       ),
 
       // Text Theme
       textTheme: TextTheme(
-        displayLarge: GoogleFonts.poppins(
+        displayLarge: const TextStyle(
           color: AppColors.textPrimary,
           fontSize: 32,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.5,
+          fontFamily: 'Poppins',
         ),
-        displayMedium: GoogleFonts.poppins(
+        displayMedium: const TextStyle(
           color: AppColors.textPrimary,
           fontSize: 28,
           fontWeight: FontWeight.w700,
+          fontFamily: 'Poppins',
         ),
-        displaySmall: GoogleFonts.poppins(
+        displaySmall: const TextStyle(
           color: AppColors.textPrimary,
           fontSize: 24,
           fontWeight: FontWeight.w600,
+          fontFamily: 'Poppins',
         ),
-        titleLarge: GoogleFonts.poppins(
+        titleLarge: const TextStyle(
           color: AppColors.textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.w600,
+          fontFamily: 'Poppins',
         ),
-        bodyLarge: GoogleFonts.inter(
+        bodyLarge: const TextStyle(
           color: AppColors.textPrimary,
           fontSize: 16,
           fontWeight: FontWeight.w500,
+          fontFamily: 'Inter',
         ),
-        bodyMedium: GoogleFonts.inter(
+        bodyMedium: const TextStyle(
           color: AppColors.textSecondary,
           fontSize: 14,
+          fontFamily: 'Inter',
         ),
-        bodySmall: GoogleFonts.inter(
+        bodySmall: const TextStyle(
           color: AppColors.textLight,
           fontSize: 12,
+          fontFamily: 'Inter',
         ),
       ),
 
@@ -104,10 +112,11 @@ class AppTheme {
           ),
           elevation: 2,
           shadowColor: AppColors.primary.withOpacity(0.3),
-          textStyle: GoogleFonts.inter(
+          textStyle: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.5,
+            fontFamily: 'Inter',
           ),
         ),
       ),
@@ -138,19 +147,22 @@ class AppTheme {
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        hintStyle: GoogleFonts.inter(
+        hintStyle: const TextStyle(
           color: AppColors.textLight,
           fontSize: 14,
+          fontFamily: 'Inter',
         ),
-        labelStyle: GoogleFonts.inter(
+        labelStyle: const TextStyle(
           color: AppColors.textSecondary,
           fontSize: 14,
           fontWeight: FontWeight.w500,
+          fontFamily: 'Inter',
         ),
-        floatingLabelStyle: GoogleFonts.inter(
+        floatingLabelStyle: const TextStyle(
           color: AppColors.primary,
           fontSize: 14,
           fontWeight: FontWeight.w600,
+          fontFamily: 'Inter',
         ),
       ),
 
@@ -176,29 +188,157 @@ class AppTheme {
     );
   }
 
+  /// Dark theme – matches current app styling.
+  static ThemeData get darkTheme {
+    const background = Color(0xFF0A0A0F);
+    const primary = Color(0xFF6C63FF);
+    const secondary = Color(0xFF4A44C6);
+    const accent = Color(0xFF00BFA6);
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: primary,
+        brightness: Brightness.dark,
+        primary: primary,
+        secondary: secondary,
+        tertiary: accent,
+        surface: background,
+      ),
+      scaffoldBackgroundColor: background,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: background,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 16),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(
+            color: const Color.fromRGBO(108, 99, 255, 0.5),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(
+            color: const Color.fromRGBO(108, 99, 255, 0.3),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: accent),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      ),
+      fontFamily: 'Poppins',
+    );
+  }
+
+  /// Cyber / neon theme – high‑contrast futuristic look.
+  static ThemeData get cyberTheme {
+    const background = Color(0xFF050712);
+    const primary = Color(0xFF00E5FF); // neon cyan
+    const secondary = Color(0xFF7C4DFF); // purple
+    const accent = Color(0xFFFF4081); // pink
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: primary,
+        brightness: Brightness.dark,
+        primary: primary,
+        secondary: secondary,
+        tertiary: accent,
+        surface: background,
+      ),
+      scaffoldBackgroundColor: background,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      cardColor: const Color(0xFF0D1024),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primary,
+          foregroundColor: Colors.black,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF10132A),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: primary),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: primary.withOpacity(0.4)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: accent, width: 2),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      ),
+      fontFamily: 'Poppins',
+    );
+  }
+
   // Custom text styles
   static TextStyle get headlineStyle {
-    return GoogleFonts.poppins(
+    return const TextStyle(
       fontSize: 40,
       fontWeight: FontWeight.w800,
       color: AppColors.textPrimary,
       letterSpacing: -1,
+      fontFamily: 'Poppins',
     );
   }
 
   static TextStyle get subtitleStyle {
-    return GoogleFonts.inter(
+    return const TextStyle(
       fontSize: 16,
       color: AppColors.textSecondary,
       fontWeight: FontWeight.w400,
+      fontFamily: 'Inter',
     );
   }
 
   static TextStyle get buttonTextStyle {
-    return GoogleFonts.inter(
+    return const TextStyle(
       fontSize: 16,
       fontWeight: FontWeight.w600,
       letterSpacing: 0.5,
+      fontFamily: 'Inter',
     );
   }
 }
