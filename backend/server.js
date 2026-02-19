@@ -6,14 +6,12 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { Sequelize, DataTypes, Op } = require('sequelize');
 
-// ==================== NODEMAILER SETUP ====================
-// Using require() instead of import for CommonJS compatibility
+//NODEMAILER SETUP
 const nodemailer = require('nodemailer');
 
-// Initialize Express app
 const app = express();
 
-// CORS configuration
+// CORS 
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -25,22 +23,16 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
 
-// ==================== EMAIL CONFIGURATION ====================
+//EMAIL CONFIG
 let emailEnabled = false;
 let mailTransporter = null;
 let currentEmailMode = 'unknown';
 
-/**
- * Initialize email transporter based on environment configuration
- * Tries multiple strategies in order:
- * 1. Real SMTP (Gmail, SendGrid, etc.)
- * 2. Ethereal test SMTP (for development)
- * 3. Console-only mode (fallback)
- */
+
+
 async function initializeEmailTransporter() {
   console.log('\n📧 ============ INITIALIZING EMAIL SYSTEM ============');
   
-  // Strategy 1: Check for real SMTP configuration
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     console.log('🔧 Detected SMTP configuration');
     console.log(`   Host: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT || 587}`);
@@ -56,15 +48,15 @@ async function initializeEmailTransporter() {
           pass: process.env.SMTP_PASS,
         },
         tls: {
-          rejectUnauthorized: false, // Allow self-signed certificates
+          rejectUnauthorized: false, 
         },
-        // Connection pooling
+        
         pool: true,
         maxConnections: 5,
         maxMessages: 100,
       });
       
-      // Verify connection configuration
+      
       await mailTransporter.verify();
       emailEnabled = true;
       currentEmailMode = 'smtp';
@@ -78,12 +70,11 @@ async function initializeEmailTransporter() {
     }
   }
   
-  // Strategy 2: Check if we should use Ethereal (fake SMTP for testing)
   if (!emailEnabled && process.env.NODE_ENV === 'development') {
-    console.log('🔧 Attempting Ethereal (fake SMTP) for development...');
+    console.log('🔧 Attempting Ethereal smtp....');
     
     try {
-      // Create a test account with Ethereal
+      
       const testAccount = await nodemailer.createTestAccount();
       
       mailTransporter = nodemailer.createTransport({
@@ -104,7 +95,6 @@ async function initializeEmailTransporter() {
       console.log(`📧 Email system: ETHEREAL (fake SMTP for testing)`);
       console.log(`   Test account: ${testAccount.user}`);
       console.log(`   Test password: ${testAccount.pass}`);
-      console.log(`   Web interface: https://ethereal.email/login`);
       console.log('💡 Note: Emails won\'t be delivered to real addresses');
       console.log('       Check Ethereal inbox for sent emails');
       
@@ -114,23 +104,22 @@ async function initializeEmailTransporter() {
     }
   }
   
-  // Strategy 3: Console-only mode (fallback)
   if (!emailEnabled) {
-    emailEnabled = true; // Still "enabled" for console logging
+    emailEnabled = true; 
     currentEmailMode = 'console';
     console.log('✅ Email system: CONSOLE-ONLY MODE');
     console.log('💡 All emails will be logged to console only');
-    console.log('   OTP codes will be displayed for testing');
+    console.log('   OTP codes will be displayed on the console');
   }
   
   console.log('📧 ============ EMAIL SYSTEM READY ============\n');
 }
 
-// ==================== DATABASE SETUP ====================
+//DATABASE SETUP
 const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: process.env.DB_STORAGE || './database.sqlite',
-  logging: false, // Set to console.log to see SQL queries
+  logging: false, 
 });
 
 // OTP Model
@@ -166,7 +155,7 @@ const OTP = sequelize.define('OTP', {
   },
 });
 
-// User Model - SIMPLIFIED VERSION
+// User Model 
 const User = sequelize.define('User', {
   id: {
     type: DataTypes.INTEGER,
@@ -237,7 +226,27 @@ const Appointment = sequelize.define('Appointment', {
   },
 });
 
-// Hash password before saving
+// Department/Service Model
+const Department = sequelize.define('Department', {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  name: { type: DataTypes.STRING, allowNull: false, unique: true },
+  description: { type: DataTypes.TEXT, allowNull: true },
+  createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+});
+
+// Counter Model (service counters)
+const Counter = sequelize.define('Counter', {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  name: { type: DataTypes.STRING, allowNull: false },
+  departmentId: { type: DataTypes.INTEGER, allowNull: true },
+  isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+  createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+});
+
+Department.hasMany(Counter, { foreignKey: 'departmentId' });
+Counter.belongsTo(Department, { foreignKey: 'departmentId' });
+
+// Hashed password
 User.beforeCreate(async (user) => {
   if (user.password) {
     const salt = await bcrypt.genSalt(10);
@@ -245,7 +254,117 @@ User.beforeCreate(async (user) => {
   }
 });
 
-// ==================== UTILITY FUNCTIONS ====================
+//M-PESA DARAJA CONFIG 
+const MPESA_BASE_URL = process.env.MPESA_BASE_URL || 'https://sandbox.safaricom.co.ke';
+const MPESA_CONSUMER_KEY = process.env.MPESA_CONSUMER_KEY || '';
+const MPESA_CONSUMER_SECRET = process.env.MPESA_CONSUMER_SECRET || '';
+const MPESA_SHORTCODE = process.env.MPESA_SHORTCODE || '';
+const MPESA_PASSKEY = process.env.MPESA_PASSKEY || '';
+const MPESA_CALLBACK_URL =
+  process.env.MPESA_CALLBACK_URL;
+
+// timestamp as YYYYMMDDHHMMSS
+const formatMpesaTimestamp = () => {
+  const now = new Date();
+  const pad = (n) => n.toString().padStart(2, '0');
+  return (
+    now.getFullYear().toString() +
+    pad(now.getMonth() + 1) +
+    pad(now.getDate()) +
+    pad(now.getHours()) +
+    pad(now.getMinutes()) +
+    pad(now.getSeconds())
+  );
+};
+
+// Get OAuth token from Daraja
+async function getMpesaAccessToken() {
+  if (!MPESA_CONSUMER_KEY || !MPESA_CONSUMER_SECRET) {
+    throw new Error('MPESA_CONSUMER_KEY/SECRET are not configured');
+  }
+
+  const credentials = Buffer.from(
+    `${MPESA_CONSUMER_KEY}:${MPESA_CONSUMER_SECRET}`
+  ).toString('base64');
+
+  const url = `${MPESA_BASE_URL}/oauth/v1/generate?grant_type=client_credentials`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Basic ${credentials}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.access_token) {
+    console.error('❌ Failed to get M-Pesa access token:', data);
+    throw new Error('Failed to get M-Pesa access token');
+  }
+
+  return data.access_token;
+}
+
+// Initiate STK Push
+async function initiateStkPush({
+  amount,
+  phoneNumber,
+  accountReference,
+  transactionDesc,
+}) {
+  if (!MPESA_SHORTCODE || !MPESA_PASSKEY) {
+    throw new Error('MPESA_SHORTCODE/PASSKEY are not configured');
+  }
+
+  const token = await getMpesaAccessToken();
+  const timestamp = formatMpesaTimestamp();
+  const password = Buffer.from(
+    `${MPESA_SHORTCODE}${MPESA_PASSKEY}${timestamp}`
+  ).toString('base64');
+
+  const body = {
+    BusinessShortCode: MPESA_SHORTCODE,
+    Password: password,
+    Timestamp: timestamp,
+    TransactionType: 'CustomerPayBillOnline',
+    Amount: amount,
+    PartyA: phoneNumber,
+    PartyB: MPESA_SHORTCODE,
+    PhoneNumber: phoneNumber,
+    CallBackURL: MPESA_CALLBACK_URL,
+    AccountReference: accountReference || 'SmarTQue',
+    TransactionDesc: transactionDesc || 'Appointment Payment',
+  };
+
+  console.log('📲 Initiating M-Pesa STK Push:', {
+    PhoneNumber: phoneNumber,
+    Amount: amount,
+    AccountReference: body.AccountReference,
+  });
+
+  const res = await fetch(
+    `${MPESA_BASE_URL}/mpesa/stkpush/v1/processrequest`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  const data = await res.json();
+  console.log('📲 M-Pesa STK response:', data);
+
+  if (!res.ok || data.ResponseCode !== '0') {
+    throw new Error(
+      data.errorMessage || data.errorCode || 'M-Pesa STK push failed'
+    );
+  }
+
+  return data;
+}
+
+//UTILITY FUNCS
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -254,10 +373,7 @@ const generateToken = (id) => {
   });
 };
 
-/**
- * Send email using configured transporter
- * Falls back gracefully if email sending fails
- */
+
 const sendEmail = async (to, subject, html) => {
   const emailId = `email_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
@@ -267,13 +383,13 @@ const sendEmail = async (to, subject, html) => {
   console.log(`   Mode: ${currentEmailMode.toUpperCase()}`);
   console.log(`   Time: ${new Date().toISOString()}`);
   
-  // Extract OTP for logging (if present in HTML)
+  
   const otpMatch = html.match(/<h1[^>]*>(\d{6})<\/h1>/i) || html.match(/>(\d{6})</);
   if (otpMatch) {
     console.log(`   📱 OTP in email: ${otpMatch[1]}`);
   }
   
-  // Console-only mode
+  
   if (currentEmailMode === 'console') {
     console.log(`   📝 [CONSOLE MODE] Email would be sent in production`);
     console.log(`   📝 [CONSOLE MODE] HTML length: ${html.length} characters`);
@@ -281,7 +397,7 @@ const sendEmail = async (to, subject, html) => {
     return { success: true, mode: 'console', emailId };
   }
   
-  // Real email sending (SMTP or Ethereal)
+  
   try {
     const fromEmail = ProcessingInstruction.env.EMAIL_FROM || process.env.SMTP-USER || "tonyngugi997@gmail.com";
     const fronName = process.env.EMAIL_FROM_NAME || "smarTQue Team";
@@ -292,7 +408,7 @@ const sendEmail = async (to, subject, html) => {
       to: to,
       subject: subject,
       html: html,
-      // Additional headers for better deliverability
+    
       headers: {
         'X-Email-ID': emailId,
         'X-Application': 'SmarTQue',
@@ -310,7 +426,7 @@ const sendEmail = async (to, subject, html) => {
     console.log(`   📨 Message ID: ${info.messageId}`);
     console.log(`   📊 Response: ${info.response || 'No response data'}`);
     
-    // For Ethereal, show preview URL
+    
     if (currentEmailMode === 'ethereal') {
       const previewUrl = nodemailer.getTestMessageUrl(info);
       if (previewUrl) {
@@ -331,7 +447,6 @@ const sendEmail = async (to, subject, html) => {
       response: emailError.response,
     });
     
-    // Don't fail the entire request if email fails
     console.log(`   ⚠️  Continuing without email (OTP will still work)`);
     console.log(`📧 [${emailId}] ============ EMAIL FAILED - CONTINUING ============\n`);
     
@@ -340,15 +455,11 @@ const sendEmail = async (to, subject, html) => {
       mode: currentEmailMode, 
       emailId, 
       error: emailError.message,
-      // Still return true for the operation to continue
       operationSuccess: true 
     };
   }
 };
 
-/**
- * Send OTP email with beautiful HTML template
- */
 const sendOtpEmail = async (email, otp) => {
   const html = `
     <!DOCTYPE html>
@@ -491,7 +602,7 @@ const sendOtpEmail = async (email, otp) => {
   const subject = 'Your SmarTQue Verification Code';
   const result = await sendEmail(email, subject, html);
   
-  // For console mode, explicitly log the OTP
+// log the otp....to replace laterr
   if (currentEmailMode === 'console') {
     console.log(`\n🔢 IMPORTANT: OTP for ${email} is: ${otp}`);
     console.log(`   Use this code in your app to verify your email\n`);
@@ -500,7 +611,7 @@ const sendOtpEmail = async (email, otp) => {
   return result;
 };
 
-// ==================== SERVER INITIALIZATION ====================
+// init server
 async function startServer() {
   try {
     console.log('\n' + '='.repeat(70));
@@ -520,7 +631,7 @@ async function startServer() {
     await sequelize.authenticate();
     console.log('✅ SQLite database connected');
     
-    // Sync database with better error handling
+    // Sync databas
     console.log('🔄 Syncing database tables...');
     try {
       await sequelize.sync({ alter: true });
@@ -534,9 +645,28 @@ async function startServer() {
       console.error('❌ Database sync failed:', syncError.message);
       console.log('⚠️  Continuing with existing tables...');
     }
+
+      // Seed a default admin if none exists (development convenience)
+      try {
+        const adminExists = await User.findOne({ where: { role: 'admin' } });
+        if (!adminExists) {
+          const adminEmail = process.env.ADMIN_EMAIL || 'admin@local';
+          const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+          const adminName = process.env.ADMIN_NAME || 'Administrator';
+          const adminUser = await User.create({ email: adminEmail, password: adminPassword, name: adminName, role: 'admin', isEmailVerified: true });
+          console.log('🔐 Default admin created:');
+          console.log(`   email: ${adminEmail}`);
+          console.log(`   password: ${adminPassword}`);
+          console.log('   Please change this account in production');
+        } else {
+          console.log('🔒 Admin account(s) already present');
+        }
+      } catch (seedErr) {
+        console.error('❌ Admin seeding failed:', seedErr.message);
+      }
     
-    // ==================== API ENDPOINTS ====================
-    
+    //API ENDPOINT
+     
     // Health check endpoint
     app.get('/', (req, res) => {
       res.json({
@@ -584,7 +714,7 @@ async function startServer() {
           });
         }
         
-        // Simple email validation
+        // email validation
         if (!email.includes('@') || !email.includes('.')) {
           console.log('❌ Validation failed: Invalid email format');
           return res.status(400).json({
@@ -603,7 +733,7 @@ async function startServer() {
           });
         }
         
-        // Clean old OTPs for this email
+        // Clean old OTPs 
         const deletedCount = await OTP.destroy({ where: { email } });
         if (deletedCount > 0) {
           console.log(`   ♻️  Cleaned up ${deletedCount} old OTP(s) for this email`);
@@ -654,7 +784,7 @@ async function startServer() {
         res.json({
           success: true,
           message: responseMessage,
-          expiresIn: 600, // 10 minutes in seconds
+          expiresIn: 600, 
           ...additionalData
         });
         
@@ -752,7 +882,7 @@ async function startServer() {
       }
     });
     
-    // Register endpoint (EXACTLY AS BEFORE - NO CHANGES)
+    // Register endpoint 
     app.post('/api/auth/register', async (req, res) => {
       try {
         const { email, password, name } = req.body;
@@ -835,7 +965,7 @@ async function startServer() {
       }
     });
     
-    // Login endpoint (EXACTLY AS BEFORE - NO CHANGES)
+    // Login endpoint 
     app.post('/api/auth/login', async (req, res) => {
       try {
         const { email, password } = req.body;
@@ -894,7 +1024,7 @@ async function startServer() {
       }
     });
     
-    // Forgot password endpoint (EXACTLY AS BEFORE - NO CHANGES)
+    // Forgot password endpoint 
     app.post('/api/auth/forgot-password', async (req, res) => {
       try {
         const { email } = req.body;
@@ -911,7 +1041,6 @@ async function startServer() {
         const user = await User.findOne({ where: { email } });
         
         if (!user) {
-          // Don't reveal user existence for security
           console.log('📧 Reset request for non-existent email:', email);
           return res.json({
             success: true,
@@ -965,7 +1094,7 @@ async function startServer() {
       }
     });
     
-    // Get current user profile (EXACTLY AS BEFORE - NO CHANGES)
+    // Get current user profile
     app.get('/api/auth/me', async (req, res) => {
       try {
         const token = req.headers.authorization?.split(' ')[1];
@@ -1007,7 +1136,7 @@ async function startServer() {
       }
     });
 
-    // ==================== APPOINTMENT ENDPOINTS (EXACTLY AS BEFORE - NO CHANGES) ====================
+    // APPOINTMENT ENDPOINTS
     
     // Book appointment
     app.post('/api/appointments/book', async (req, res) => {
@@ -1210,11 +1339,265 @@ async function startServer() {
         });
       }
     });
-    
+
+    // -------------------- ADMIN MIDDLEWARE & ENDPOINTS --------------------
+    // Auth middleware to verify token and attach user
+    const authMiddleware = async (req, res, next) => {
+      try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) return res.status(401).json({ success: false, error: 'No authentication token provided' });
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'smartque_dev_secret_2024');
+        const user = await User.findByPk(decoded.id);
+        if (!user) return res.status(401).json({ success: false, error: 'Invalid token' });
+
+        req.user = user;
+        next();
+      } catch (err) {
+        console.error('❌ Auth middleware error:', err.message);
+        return res.status(401).json({ success: false, error: 'Invalid or expired token' });
+      }
+    };
+
+    // Admin guard
+    const adminOnly = (req, res, next) => {
+      const user = req.user;
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ success: false, error: 'Admin access required' });
+      }
+      next();
+    };
+
+    // Get all users (admin)
+    app.get('/api/admin/users', authMiddleware, adminOnly, async (req, res) => {
+      try {
+        const users = await User.findAll({ order: [['id', 'ASC']] });
+        res.json({ success: true, users: users.map(u => ({ id: u.id, email: u.email, name: u.name, role: u.role, isEmailVerified: u.isEmailVerified })) });
+      } catch (error) {
+        console.error('❌ Admin get users error:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch users' });
+      }
+    });
+
+    // Update user role (admin)
+    app.patch('/api/admin/users/:id/role', authMiddleware, adminOnly, async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { role } = req.body;
+        const allowed = ['user', 'admin', 'business'];
+        if (!allowed.includes(role)) return res.status(400).json({ success: false, error: 'Invalid role' });
+
+        const user = await User.findByPk(id);
+        if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+
+        await user.update({ role });
+        res.json({ success: true, message: 'User role updated', user: { id: user.id, email: user.email, role: user.role } });
+      } catch (error) {
+        console.error('❌ Admin update user role error:', error);
+        res.status(500).json({ success: false, error: 'Failed to update role' });
+      }
+    });
+
+    // Get all appointments (admin) with optional filters
+    app.get('/api/admin/appointments', authMiddleware, adminOnly, async (req, res) => {
+      try {
+        const { status, date } = req.query;
+        const where = {};
+        if (status) where.status = status;
+        if (date) {
+          const appointmentDate = new Date(date);
+          const dayStart = new Date(appointmentDate);
+          dayStart.setHours(0,0,0,0);
+          const dayEnd = new Date(appointmentDate);
+          dayEnd.setHours(23,59,59,999);
+          where.dateTime = { [Op.between]: [dayStart, dayEnd] };
+        }
+        const appointments = await Appointment.findAll({ where, order: [['dateTime', 'DESC']] });
+        res.json({ success: true, appointments: appointments.map(a => a.toJSON()) });
+      } catch (error) {
+        console.error('❌ Admin get appointments error:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch appointments' });
+      }
+    });
+
+    // Update appointment status (admin)
+    app.patch('/api/admin/appointments/:id/status', authMiddleware, adminOnly, async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { status } = req.body;
+        const allowed = ['upcoming', 'completed', 'cancelled'];
+        if (!allowed.includes(status)) return res.status(400).json({ success: false, error: 'Invalid status' });
+
+        const appointment = await Appointment.findByPk(id);
+        if (!appointment) return res.status(404).json({ success: false, error: 'Appointment not found' });
+
+        await appointment.update({ status });
+        res.json({ success: true, message: 'Appointment status updated', appointment: appointment.toJSON() });
+      } catch (error) {
+        console.error('❌ Admin update appointment status error:', error);
+        res.status(500).json({ success: false, error: 'Failed to update appointment' });
+      }
+    });
+
+    // ---------------- Admin Services (Departments) ----------------
+    app.get('/api/admin/services', authMiddleware, adminOnly, async (req, res) => {
+      try {
+        const services = await Department.findAll({ order: [['name', 'ASC']] });
+        res.json({ success: true, services: services.map(s => s.toJSON()) });
+      } catch (error) {
+        console.error('❌ Admin get services error:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch services' });
+      }
+    });
+
+    app.post('/api/admin/services', authMiddleware, adminOnly, async (req, res) => {
+      try {
+        const { name, description } = req.body;
+        if (!name) return res.status(400).json({ success: false, error: 'Name is required' });
+        const service = await Department.create({ name, description });
+        res.status(201).json({ success: true, service: service.toJSON() });
+      } catch (error) {
+        console.error('❌ Admin create service error:', error);
+        res.status(500).json({ success: false, error: 'Failed to create service' });
+      }
+    });
+
+    app.delete('/api/admin/services/:id', authMiddleware, adminOnly, async (req, res) => {
+      try {
+        const { id } = req.params;
+        const service = await Department.findByPk(id);
+        if (!service) return res.status(404).json({ success: false, error: 'Service not found' });
+        await service.destroy();
+        res.json({ success: true, message: 'Service deleted' });
+      } catch (error) {
+        console.error('❌ Admin delete service error:', error);
+        res.status(500).json({ success: false, error: 'Failed to delete service' });
+      }
+    });
+
+    // ---------------- Admin Counters ----------------
+    app.get('/api/admin/counters', authMiddleware, adminOnly, async (req, res) => {
+      try {
+        const counters = await Counter.findAll({ include: [Department], order: [['id', 'ASC']] });
+        res.json({ success: true, counters: counters.map(c => ({ ...c.toJSON(), department: c.Department ? c.Department.toJSON() : null })) });
+      } catch (error) {
+        console.error('❌ Admin get counters error:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch counters' });
+      }
+    });
+
+    app.post('/api/admin/counters', authMiddleware, adminOnly, async (req, res) => {
+      try {
+        const { name, departmentId, isActive } = req.body;
+        if (!name) return res.status(400).json({ success: false, error: 'Name is required' });
+        const counter = await Counter.create({ name, departmentId: departmentId || null, isActive: isActive !== false });
+        res.status(201).json({ success: true, counter: counter.toJSON() });
+      } catch (error) {
+        console.error('❌ Admin create counter error:', error);
+        res.status(500).json({ success: false, error: 'Failed to create counter' });
+      }
+    });
+
+    app.patch('/api/admin/counters/:id', authMiddleware, adminOnly, async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { isActive, name, departmentId } = req.body;
+        const counter = await Counter.findByPk(id);
+        if (!counter) return res.status(404).json({ success: false, error: 'Counter not found' });
+        await counter.update({ isActive: isActive ?? counter.isActive, name: name ?? counter.name, departmentId: departmentId ?? counter.departmentId });
+        res.json({ success: true, counter: counter.toJSON() });
+      } catch (error) {
+        console.error('❌ Admin update counter error:', error);
+        res.status(500).json({ success: false, error: 'Failed to update counter' });
+      }
+    });
+
+    // ---------------- Admin Reports ----------------
+    app.get('/api/admin/reports/daily', authMiddleware, adminOnly, async (req, res) => {
+      try {
+        const today = new Date();
+        const start = new Date(today); start.setHours(0,0,0,0);
+        const end = new Date(today); end.setHours(23,59,59,999);
+
+        const total = await Appointment.count({ where: { dateTime: { [Op.between]: [start, end] } } });
+        const upcoming = await Appointment.count({ where: { dateTime: { [Op.between]: [start, end] }, status: 'upcoming' } });
+        const completed = await Appointment.count({ where: { dateTime: { [Op.between]: [start, end] }, status: 'completed' } });
+        const cancelled = await Appointment.count({ where: { dateTime: { [Op.between]: [start, end] }, status: 'cancelled' } });
+
+        // counts per department
+        const [deptCounts] = await sequelize.query(`SELECT departmentName, COUNT(*) as count FROM Appointments WHERE dateTime BETWEEN :start AND :end GROUP BY departmentName`, { replacements: { start, end } });
+
+        res.json({ success: true, report: { total, upcoming, completed, cancelled, byDepartment: deptCounts } });
+      } catch (error) {
+        console.error('❌ Admin daily report error:', error);
+        res.status(500).json({ success: false, error: 'Failed to generate report' });
+      }
+    });
+
+    // Admin stats
+    app.get('/api/admin/stats', authMiddleware, adminOnly, async (req, res) => {
+      try {
+        const usersCount = await User.count();
+        const totalAppointments = await Appointment.count();
+        const upcoming = await Appointment.count({ where: { status: 'upcoming' } });
+        const completed = await Appointment.count({ where: { status: 'completed' } });
+        const cancelled = await Appointment.count({ where: { status: 'cancelled' } });
+
+        res.json({ success: true, stats: { usersCount, totalAppointments, upcoming, completed, cancelled } });
+      } catch (error) {
+        console.error('❌ Admin stats error:', error);
+        res.status(500).json({ success: false, error: 'Failed to compute stats' });
+      }
+    });
 
     
-    // ==================== START SERVER ====================
-    // Bind to the default network interface to avoid hard‑coding an IP
+    //M-PESA PAYMENT ENDPOINTS
+    // STK Push for appointment payments
+    app.post('/api/payments/mpesa/stkpush', async (req, res) => {
+      try {
+        const { phoneNumber, amount, accountReference, transactionDesc } =
+          req.body;
+
+        if (!phoneNumber || !amount) {
+          return res.status(400).json({
+            success: false,
+            error: 'phoneNumber and amount are required',
+          });
+        }
+
+        const stkResponse = await initiateStkPush({
+          amount,
+          phoneNumber,
+          accountReference,
+          transactionDesc,
+        });
+
+        return res.json({
+          success: true,
+          message: 'STK push initiated',
+          data: stkResponse,
+        });
+      } catch (error) {
+        console.error('❌ M-Pesa STK error:', error);
+        return res.status(500).json({
+          success: false,
+          error: error.message || 'Failed to initiate M-Pesa payment',
+        });
+      }
+    });
+
+    // Callback endpoin
+    // to edit later bofore productio
+    app.post('/api/payments/mpesa/callback', (req, res) => {
+      console.log('📲 M-Pesa Callback received:', JSON.stringify(req.body));
+      res.json({
+        ResultCode: 0,
+        ResultDesc: 'Callback received successfully',
+      });
+    });
+    
+    
+    //START SERVER
     app.listen(PORT, () => {
       console.log('\n' + '='.repeat(70));
       console.log('🚀 SmarTQue Backend Server (NodeMailer Version)');
@@ -1261,5 +1644,4 @@ async function startServer() {
   }
 }
 
-// Start everything
 startServer();

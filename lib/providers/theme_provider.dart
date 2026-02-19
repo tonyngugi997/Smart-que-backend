@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:advanced_login_app/theme.dart';
 
-/// Supported app themes.
 enum AppThemeType { light, dark, cyber }
 
 class ThemeProvider extends ChangeNotifier {
   static const _prefKey = 'app_theme';
 
-  AppThemeType _currentTheme = AppThemeType.dark; // default to existing look
+  AppThemeType _currentTheme = AppThemeType.dark; 
 
   ThemeProvider() {
     _loadSavedTheme();
@@ -45,7 +44,7 @@ class ThemeProvider extends ChangeNotifier {
             .firstWhere((t) => t.name == saved, orElse: () => _currentTheme);
         notifyListeners();
       } catch (_) {
-        // Ignore invalid saved values and keep default.
+        // to do later
       }
     }
   }

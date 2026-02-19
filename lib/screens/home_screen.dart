@@ -5,6 +5,12 @@ import 'package:advanced_login_app/providers/appointment_provider.dart';
 import 'package:advanced_login_app/widgets/advanced_sidebar.dart';
 import 'package:advanced_login_app/widgets/advanced_header.dart';
 import 'package:advanced_login_app/models/appointment_model.dart';
+import 'package:advanced_login_app/screens/settings_screen.dart';
+import 'package:advanced_login_app/screens/departments_list_screen.dart';
+import 'package:advanced_login_app/screens/records_screen.dart';
+import 'package:advanced_login_app/screens/telemedicine_screen.dart';
+import 'package:advanced_login_app/screens/queue_status_screen.dart';
+import 'package:advanced_login_app/screens/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -53,7 +59,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFF0A0A0F),
       drawer: AdvancedSidebar(
         expanded: _sidebarExpanded,
         onToggle: _toggleSidebar,
@@ -78,6 +83,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     SliverToBoxAdapter(
                       child: _buildWelcomeSection(
                           authProvider.user?['name'] ?? 'User'),
+                    ),
+
+                    // Dashboard overview (stats + next appointment)
+                    SliverToBoxAdapter(
+                      child: _buildDashboardOverview(appointmentProvider),
                     ),
 
                     // Quick Actions
@@ -338,12 +348,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 30, bottom: 15),
+        Padding(
+          padding: const EdgeInsets.only(top: 30, bottom: 15),
           child: Text(
             'Upcoming Appointments',
             style: TextStyle(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
@@ -516,12 +526,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 30, bottom: 15),
+        Padding(
+          padding: const EdgeInsets.only(top: 30, bottom: 15),
           child: Text(
             'Hospital Departments',
             style: TextStyle(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
@@ -586,10 +596,10 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Health Overview',
             style: TextStyle(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -617,6 +627,214 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Color(0xFFFFA726),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Top-of-dashboard metrics + next upcoming appointment.
+  Widget _buildDashboardOverview(AppointmentProvider provider) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final all = provider.userAppointments;
+    final now = DateTime.now();
+    final upcoming = all
+        .where((a) => a.status == 'upcoming' && a.dateTime.isAfter(now))
+        .toList();
+    final completed =
+        all.where((a) => a.status == 'completed').toList();
+    final cancelled =
+        all.where((a) => a.status == 'cancelled').toList();
+
+    Appointment? nextAppointment =
+        upcoming.isNotEmpty ? upcoming.first : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                label: 'Upcoming',
+                value: upcoming.length.toString(),
+                color: colorScheme.primary,
+                icon: Icons.schedule,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                label: 'Completed',
+                value: completed.length.toString(),
+                color: Colors.greenAccent.shade400,
+                icon: Icons.check_circle,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                label: 'Cancelled',
+                value: cancelled.length.toString(),
+                color: Colors.redAccent.shade200,
+                icon: Icons.cancel,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        _buildNextAppointmentCard(nextAppointment),
+      ],
+    );
+  }
+
+  Widget _buildStatCard({
+    required String label,
+    required String value,
+    required Color color,
+    required IconData icon,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 10),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNextAppointmentCard(Appointment? appointment) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (appointment == null) {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceVariant.withOpacity(0.7),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: colorScheme.outline.withOpacity(0.4),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.event_busy,
+                color: colorScheme.onSurface.withOpacity(0.7)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'No upcoming appointments. Book your next visit.',
+                style: TextStyle(
+                  color: colorScheme.onSurface.withOpacity(0.85),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final date = appointment.dateTime;
+    final dateStr =
+        '${date.day}/${date.month}/${date.year}  ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primaryContainer,
+            colorScheme.secondaryContainer,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: colorScheme.primary,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.event_available,
+                color: colorScheme.onPrimary, size: 26),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Next Appointment',
+                  style: TextStyle(
+                    color: colorScheme.onPrimaryContainer.withOpacity(0.9),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  appointment.doctorName,
+                  style: TextStyle(
+                    color: colorScheme.onPrimaryContainer,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${appointment.departmentName} • $dateStr',
+                  style: TextStyle(
+                    color: colorScheme.onPrimaryContainer.withOpacity(0.85),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -672,52 +890,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Navigation Methods
   void _navigateToBooking(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A23),
-        title: const Text(
-          'Book Appointment',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Appointment booking feature coming soon.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const DepartmentsListScreen(),
       ),
     );
   }
 
   void _showQueueStatus() {
-    // Implement queue status
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Queue status feature coming soon'),
-        backgroundColor: const Color(0xFF00BFA6),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const QueueStatusScreen(),
       ),
     );
   }
 
   void _showMedicalRecords() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Medical records feature coming soon'),
-        backgroundColor: const Color(0xFF6C63FF),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const RecordsScreen(),
       ),
     );
   }
 
   void _startTelemedicine() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Telemedicine feature coming soon'),
-        backgroundColor: const Color(0xFFFFA726),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const TelemedicineScreen(),
       ),
     );
   }
@@ -738,88 +937,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showProfile(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(25),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF6C63FF), Color(0xFF4A44C6)],
-                  ),
-                ),
-                child: const Icon(
-                  Icons.person_outline,
-                  color: Colors.white,
-                  size: 30,
-                ),
-              ),
-              const SizedBox(height: 15),
-              const Text(
-                'Profile',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                Provider.of<AuthProvider>(context).user?['email'] ??
-                    'user@email.com',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.6),
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 25),
-              ListTile(
-                leading:
-                    const Icon(Icons.settings_outlined, color: Colors.white70),
-                title: const Text(
-                  'Settings',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/settings');
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.help_outline, color: Colors.white70),
-                title: const Text(
-                  'Help & Support',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onTap: () => Navigator.pop(context),
-              ),
-              ListTile(
-                leading: const Icon(Icons.logout_outlined, color: Colors.red),
-                title: const Text(
-                  'Logout',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Provider.of<AuthProvider>(context, listen: false).logout();
-                  Navigator.pushReplacementNamed(context, '/login');
-                },
-              ),
-            ],
-          ),
-        );
-      },
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ProfileScreen()),
     );
   }
 }

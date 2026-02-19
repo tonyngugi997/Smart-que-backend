@@ -3,8 +3,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String _baseUrl =
-      'https://smartque-production.up.railway.app/api';
+  // Use local backend during development.
+  // - For Android emulator use 10.0.2.2 (emulator -> host machine).
+  // - Alternatively, run `adb reverse tcp:3000 tcp:3000` and use http://localhost:3000
+  // - Ensure your backend binds to 0.0.0.0 so the emulator can reach it.
+  static const String _baseUrl = 'http://10.194.251.185:5000/api';
   static Future<Map<String, dynamic>> login({
     required String email,
     required String password,
@@ -588,7 +591,6 @@ class ApiService {
       final url =
           '$_baseUrl/appointments/next-queue?department=$departmentName&date=${dateTime.toIso8601String()}';
       print('🔢 Getting queue number from: $url');
-
       final response = await http.get(
         Uri.parse(url),
         headers: {
@@ -627,6 +629,266 @@ class ApiService {
       return {
         'success': false,
         'queueNumber': '1',
+      };
+    }
+  }
+
+  // ------------------ Admin API Calls ------------------
+  static Future<Map<String, dynamic>> getAdminUsers(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/admin/users'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.body.isEmpty) return {'success': false, 'users': []};
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'users': data['users'] ?? []};
+      }
+      return {'success': false, 'error': data['error'] ?? 'Failed to fetch users'};
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateUserRole({
+    required String userId,
+    required String role,
+    required String token,
+  }) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$_baseUrl/admin/users/$userId/role'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'role': role}),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'user': data['user']};
+      }
+      return {'success': false, 'error': data['error'] ?? 'Failed to update role'};
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getAdminAppointments({
+    String? status,
+    String? date,
+    required String token,
+  }) async {
+    try {
+      var url = '$_baseUrl/admin/appointments';
+      final params = <String>[];
+      if (status != null) params.add('status=$status');
+      if (date != null) params.add('date=$date');
+      if (params.isNotEmpty) url += '?${params.join('&')}';
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.body.isEmpty) return {'success': false, 'appointments': []};
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'appointments': data['appointments'] ?? []};
+      }
+      return {'success': false, 'error': data['error'] ?? 'Failed to fetch appointments'};
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateAppointmentStatus({
+    required String appointmentId,
+    required String status,
+    required String token,
+  }) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$_baseUrl/admin/appointments/$appointmentId/status'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'status': status}),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'appointment': data['appointment']};
+      }
+      return {'success': false, 'error': data['error'] ?? 'Failed to update appointment'};
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getAdminStats(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/admin/stats'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.body.isEmpty) return {'success': false};
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'stats': data['stats'] ?? {}};
+      }
+      return {'success': false, 'error': data['error'] ?? 'Failed to fetch stats'};
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  // Admin services (departments)
+  static Future<Map<String, dynamic>> getAdminServices(String token) async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/admin/services'), headers: {'Content-Type':'application/json','Authorization':'Bearer $token'});
+      if (response.body.isEmpty) return {'success': false, 'services': []};
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) return {'success': true, 'services': data['services'] ?? []};
+      return {'success': false, 'error': data['error'] ?? 'Failed'};
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> createAdminService(String name, String description, String token) async {
+    try {
+      final response = await http.post(Uri.parse('$_baseUrl/admin/services'), headers: {'Content-Type':'application/json','Authorization':'Bearer $token'}, body: jsonEncode({'name': name, 'description': description}));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 201) return {'success': true, 'service': data['service']};
+      return {'success': false, 'error': data['error'] ?? 'Failed'};
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteAdminService(String id, String token) async {
+    try {
+      final response = await http.delete(Uri.parse('$_baseUrl/admin/services/$id'), headers: {'Content-Type':'application/json','Authorization':'Bearer $token'});
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) return {'success': true};
+      return {'success': false, 'error': data['error'] ?? 'Failed'};
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  // Admin counters
+  static Future<Map<String, dynamic>> getAdminCounters(String token) async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/admin/counters'), headers: {'Content-Type':'application/json','Authorization':'Bearer $token'});
+      if (response.body.isEmpty) return {'success': false, 'counters': []};
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) return {'success': true, 'counters': data['counters'] ?? []};
+      return {'success': false, 'error': data['error'] ?? 'Failed'};
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> createAdminCounter(String name, String? departmentId, bool isActive, String token) async {
+    try {
+      final response = await http.post(Uri.parse('$_baseUrl/admin/counters'), headers: {'Content-Type':'application/json','Authorization':'Bearer $token'}, body: jsonEncode({'name': name, 'departmentId': departmentId, 'isActive': isActive}));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 201) return {'success': true, 'counter': data['counter']};
+      return {'success': false, 'error': data['error'] ?? 'Failed'};
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateAdminCounter(String id, Map<String, dynamic> body, String token) async {
+    try {
+      final response = await http.patch(Uri.parse('$_baseUrl/admin/counters/$id'), headers: {'Content-Type':'application/json','Authorization':'Bearer $token'}, body: jsonEncode(body));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) return {'success': true, 'counter': data['counter']};
+      return {'success': false, 'error': data['error'] ?? 'Failed'};
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getAdminDailyReport(String token) async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/admin/reports/daily'), headers: {'Content-Type':'application/json','Authorization':'Bearer $token'});
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) return {'success': true, 'report': data['report']};
+      return {'success': false, 'error': data['error'] ?? 'Failed'};
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  // ==================== M-PESA DARAJA (STK PUSH) ====================
+  static Future<Map<String, dynamic>> initiateMpesaStkPush({
+    required String phoneNumber,
+    required double amount,
+    String accountReference = 'SmarTQue Appointment',
+    String transactionDesc = 'Appointment Payment',
+  }) async {
+    try {
+      final url = '$_baseUrl/payments/mpesa/stkpush';
+      print('📲 Initiating M-Pesa STK push to: $url');
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'phoneNumber': phoneNumber,
+          'amount': amount.toInt(), // M-Pesa expects integer amount
+          'accountReference': accountReference,
+          'transactionDesc': transactionDesc,
+        }),
+      );
+
+      print('📲 STK response status: ${response.statusCode}');
+      print('📲 STK response body: ${response.body}');
+
+      if (response.body.isEmpty) {
+        return {
+          'success': false,
+          'error': 'Empty response from server',
+        };
+      }
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {
+          'success': true,
+          'data': data['data'],
+        };
+      } else {
+        return {
+          'success': false,
+          'error': data['error'] ?? 'Failed to initiate M-Pesa payment',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Cannot connect to server: $e',
       };
     }
   }

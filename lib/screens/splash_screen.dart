@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
+// Use static TextStyle to avoid runtime font fetching
 import 'enhanced_login_screen.dart'; // Changed from 'login_screen.dart'
 
 class SplashScreen extends StatefulWidget {
@@ -68,8 +68,9 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: colorScheme.surface,
       body: Stack(
         children: [
           Positioned.fill(
@@ -142,34 +143,36 @@ class _SplashScreenState extends State<SplashScreen>
                   children: [
                     Text(
                       'SmarT',
-                      style: GoogleFonts.poppins(
+                      style: const TextStyle(
                         fontSize: 52,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                         letterSpacing: 2.0,
-                        shadows: const [
+                        shadows: [
                           Shadow(
                             color: Color.fromRGBO(108, 99, 255, 204),
                             blurRadius: 20,
                             offset: Offset.zero,
                           ),
                         ],
+                        fontFamily: 'Poppins',
                       ),
                     ),
                     Text(
                       'Que',
-                      style: GoogleFonts.poppins(
+                      style: const TextStyle(
                         fontSize: 52,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF00BFA6),
+                        color: Color(0xFF00BFA6),
                         letterSpacing: 2.0,
-                        shadows: const [
+                        shadows: [
                           Shadow(
                             color: Color.fromRGBO(0, 191, 166, 204),
                             blurRadius: 20,
                             offset: Offset.zero,
                           ),
                         ],
+                        fontFamily: 'Poppins',
                       ),
                     ),
                   ],
@@ -199,20 +202,22 @@ class _SplashScreenState extends State<SplashScreen>
                     children: [
                       Text(
                         'Intelligent Queue Management',
-                        style: GoogleFonts.poppins(
+                        style: const TextStyle(
                           fontSize: 16,
-                          color: const Color.fromRGBO(255, 255, 255, 179),
+                          color: Color.fromRGBO(255, 255, 255, 179),
                           letterSpacing: 1.5,
+                          fontFamily: 'Poppins',
                         ),
                       ),
                       const SizedBox(height: 5),
                       Text(
                         'By Brenda Kangacha',
-                        style: GoogleFonts.poppins(
+                        style: const TextStyle(
                           fontSize: 12,
-                          color: const Color(0xFF00BFA6),
+                          color: Color(0xFF00BFA6),
                           fontWeight: FontWeight.w600,
                           letterSpacing: 1.2,
+                          fontFamily: 'Poppins',
                         ),
                       ),
                     ],
@@ -257,10 +262,11 @@ class _SplashScreenState extends State<SplashScreen>
                 // Loading text
                 Text(
                   'Initializing Smart System...',
-                  style: GoogleFonts.poppins(
+                  style: const TextStyle(
                     fontSize: 12,
-                    color: const Color.fromRGBO(255, 255, 255, 153),
+                    color: Color.fromRGBO(255, 255, 255, 153),
                     letterSpacing: 1.0,
+                    fontFamily: 'Poppins',
                   ),
                 )
                     .animate(
@@ -275,9 +281,10 @@ class _SplashScreenState extends State<SplashScreen>
                 // Version info
                 Text(
                   'v1.0.0 • © 2026 SmarTQue Inc.',
-                  style: GoogleFonts.poppins(
+                  style: const TextStyle(
                     fontSize: 10,
-                    color: const Color.fromRGBO(255, 255, 255, 77),
+                    color: Color.fromRGBO(255, 255, 255, 77),
+                    fontFamily: 'Poppins',
                   ),
                 )
                     .animate(
@@ -302,8 +309,8 @@ class _SplashScreenState extends State<SplashScreen>
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                   colors: [
-                    const Color(0xFF0A0A0F),
-                    const Color.fromRGBO(10, 10, 15, 204),
+                    colorScheme.surface,
+                    colorScheme.surface.withOpacity(0.8),
                     Colors.transparent,
                   ],
                 ),

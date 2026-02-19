@@ -1,4 +1,3 @@
-// lib/data/department_data.dart
 import 'package:flutter/material.dart';
 import 'package:advanced_login_app/screens/department_model.dart';
 

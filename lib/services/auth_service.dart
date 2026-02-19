@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AuthService {
   // Update with your actual IP if running on physical device
   static const String _baseUrl =
-      'http://192.168.100.16:5000/api'; // For Android emulator
+      'http://10.194.251.185:5000/api'; // For Android emulator
   // static const String _baseUrl = 'http://localhost:5000/api'; // For iOS simulator
   // static const String _baseUrl = 'http://YOUR_LOCAL_IP:5000/api'; // For physical device
 
@@ -71,6 +71,7 @@ class AuthService {
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
+    required String username,
   }) async {
     try {
       final response = await http.post(
@@ -82,6 +83,7 @@ class AuthService {
         body: jsonEncode({
           'email': email,
           'password': password,
+          'username': username
         }),
       );
 

@@ -232,7 +232,7 @@ class _AdvancedDepartmentsScreenState extends State<AdvancedDepartmentsScreen>
             ),
           ),
 
-          // Filter Chips (if any)
+          // Filter 
           if (_selectedSpecializations.isNotEmpty ||
               _telemedicineOnly ||
               _emergencyOnly)
@@ -327,7 +327,6 @@ class _AdvancedDepartmentsScreenState extends State<AdvancedDepartmentsScreen>
         ],
       ),
 
-      // Floating Action Button for Quick Actions
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showFilterModal,
         backgroundColor: const Color(0xFF6C63FF),
@@ -340,7 +339,6 @@ class _AdvancedDepartmentsScreenState extends State<AdvancedDepartmentsScreen>
   }
 }
 
-// Filter Modal Bottom Sheet
 class FilterModal extends StatefulWidget {
   final List<String> selectedSpecializations;
   final bool telemedicineOnly;

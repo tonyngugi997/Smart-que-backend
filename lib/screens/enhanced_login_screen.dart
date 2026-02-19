@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:advanced_login_app/google_fonts_stub.dart';
 import 'package:provider/provider.dart';
 import 'package:confetti/confetti.dart';
 import '../providers/auth_provider.dart';
@@ -28,7 +28,7 @@ class _EnhancedLoginScreenState extends State<EnhancedLoginScreen>
   final _nameController = TextEditingController();
   final _otpInputController = TextEditingController();
 
-  // State
+  // State controllerss
   AuthMode _mode = AuthMode.login;
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -148,7 +148,25 @@ class _EnhancedLoginScreenState extends State<EnhancedLoginScreen>
 
       if (success) {
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/home');
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          final user = authProvider.user ?? authProvider.currentUser;
+          // Debug: print user object to console
+          // ignore: avoid_print
+          print('🔍 Logged in user: $user');
+
+          bool isAdmin = false;
+          if (user != null) {
+            final role = user['role'] ?? user['type'];
+            if (role is String && role.toLowerCase() == 'admin') isAdmin = true;
+            if (user['isAdmin'] == true) isAdmin = true;
+            if (user['roles'] is List && (user['roles'] as List).contains('admin')) isAdmin = true;
+          }
+
+          if (isAdmin) {
+            Navigator.pushReplacementNamed(context, '/admin');
+          } else {
+            Navigator.pushReplacementNamed(context, '/home');
+          }
         }
       } else {
         setState(() => _errorMessage = authProvider.error ?? 'Login failed');
@@ -504,8 +522,9 @@ class _EnhancedLoginScreenState extends State<EnhancedLoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: dark,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
           // Background
@@ -649,7 +668,7 @@ class _EnhancedLoginScreenState extends State<EnhancedLoginScreen>
               ),
               const SizedBox(height: 20),
 
-              // Confirm Password (Signup only)
+              // Confirm Password
               if (_mode == AuthMode.signup) ...[
                 _buildTextField(
                   controller: _confirmPasswordController,
@@ -662,7 +681,7 @@ class _EnhancedLoginScreenState extends State<EnhancedLoginScreen>
                 const SizedBox(height: 20),
               ],
 
-              // Name Field (Signup only)
+              // Name Field 
               if (_mode == AuthMode.signup) ...[
                 _buildTextField(
                   controller: _nameController,

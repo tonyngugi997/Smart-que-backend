@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:advanced_login_app/providers/appointment_provider.dart';
 import 'package:advanced_login_app/providers/auth_provider.dart';
+import 'package:advanced_login_app/services/api_service.dart';
 
 class DoctorSelectionScreen extends StatefulWidget {
   final String departmentName;
@@ -20,7 +21,7 @@ class DoctorSelectionScreen extends StatefulWidget {
 class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
   final List<Map<String, dynamic>> doctors = [
     {
-      'name': 'Dr. Sarah Johnson',
+      'name': 'Dr. Rayhab Loyce',
       'specialty': 'Specialist',
       'rating': 4.8,
       'reviews': 324,
@@ -30,7 +31,7 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
       'languages': ['English', 'Swahili'],
     },
     {
-      'name': 'Dr. Michael Chen',
+      'name': 'Dr. Brenda Jonnes',
       'specialty': 'Senior Consultant',
       'rating': 4.9,
       'reviews': 456,
@@ -40,7 +41,7 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
       'languages': ['English', 'Mandarin'],
     },
     {
-      'name': 'Dr. Emily Watson',
+      'name': 'Dr. Keziah Njeri',
       'specialty': 'Consultant',
       'rating': 4.6,
       'reviews': 218,
@@ -60,7 +61,7 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
       'languages': ['English', 'Swahili'],
     },
     {
-      'name': 'Dr. Lisa Anderson',
+      'name': 'Dr. Tony Gitau',
       'specialty': 'Senior Consultant',
       'rating': 4.8,
       'reviews': 398,
@@ -75,8 +76,9 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: const Color(0xFF1A1A23),
         elevation: 0,
@@ -272,7 +274,7 @@ class _DoctorSelectionScreenState extends State<DoctorSelectionScreen> {
   }
 }
 
-// ==================== DATE & TIME SELECTION ====================
+// DATE & TIME SELECTION
 class DateTimeSelectionScreen extends StatefulWidget {
   final String doctorName;
   final String departmentName;
@@ -320,8 +322,9 @@ class _DateTimeSelectionScreenState extends State<DateTimeSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: const Color(0xFF1A1A23),
         elevation: 0,
@@ -537,7 +540,7 @@ class _DateTimeSelectionScreenState extends State<DateTimeSelectionScreen> {
   }
 }
 
-// ==================== CONFIRMATION SCREEN ====================
+//CONFIRMATION SCREEN
 class ConfirmationScreen extends StatefulWidget {
   final String doctorName;
   final String departmentName;
@@ -564,8 +567,9 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: const Color(0xFF1A1A23),
         elevation: 0,
@@ -679,12 +683,8 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () async {
-                  // Disable button and show loading indicator
-                  final button =
-                      context.findAncestorWidgetOfExactType<ElevatedButton>();
-
                   try {
-                    // Book appointment first
+                    final messenger = ScaffoldMessenger.of(context);
                     final appointmentProvider =
                         context.read<AppointmentProvider>();
                     final authProvider = context.read<AuthProvider>();
@@ -698,8 +698,43 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                       );
                     }
 
-                    print('🔄 Starting appointment booking...');
+                    //initiate STK push first
+                    if (paymentMethod == 'pay_now') {
+                      final phone = await _promptForPhoneNumber(context);
+                      if (phone == null) return;
 
+                      final mpesaResult =
+                          await ApiService.initiateMpesaStkPush(
+                        phoneNumber: phone,
+                        amount: 1500,
+                        accountReference:
+                            'APT-${DateTime.now().millisecondsSinceEpoch}',
+                        transactionDesc:
+                            'Appointment with ${widget.doctorName}',
+                      );
+
+                      if (mpesaResult['success'] != true) {
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                mpesaResult['error'] ??
+                                    'Failed to initiate M-Pesa payment',
+                                ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'M-Pesa STK push sent. Please complete payment on your phone.'),
+                        ),
+                      );
+                    }
+
+                    // Proceed to book appointment
                     final success = await appointmentProvider.bookAppointment(
                       doctorName: widget.doctorName,
                       departmentName: widget.departmentName,
@@ -715,53 +750,40 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                       consultationFee: 1500,
                     );
 
-                    print('✅ Booking result: $success');
-
-                    // Check if widget is still mounted before using context
                     if (!mounted) return;
 
                     if (success) {
-                      print('🎉 Navigating to success screen...');
-                      if (mounted) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SuccessScreen(
-                              doctorName: widget.doctorName,
-                              departmentName: widget.departmentName,
-                              departmentColor: widget.departmentColor,
-                              date: widget.date,
-                              time: widget.time,
-                            ),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SuccessScreen(
+                            doctorName: widget.doctorName,
+                            departmentName: widget.departmentName,
+                            departmentColor: widget.departmentColor,
+                            date: widget.date,
+                            time: widget.time,
                           ),
-                        );
-                      }
+                        ),
+                      );
                     } else {
-                      print('❌ Booking failed');
-                      if (mounted) {
-                        final messenger = ScaffoldMessenger.of(context);
-                        messenger.showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                                'Failed to book appointment. Please try again.'),
-                            backgroundColor: Colors.red,
-                            duration: Duration(seconds: 3),
-                          ),
-                        );
-                      }
-                    }
-                  } catch (e) {
-                    print('🔥 Error during booking: $e');
-                    if (mounted) {
-                      final messenger = ScaffoldMessenger.of(context);
                       messenger.showSnackBar(
-                        SnackBar(
-                          content: Text('Error: ${e.toString()}'),
+                        const SnackBar(
+                          content: Text(
+                              'Failed to book appointment. Please try again.'),
                           backgroundColor: Colors.red,
-                          duration: const Duration(seconds: 3),
+                          duration: Duration(seconds: 3),
                         ),
                       );
                     }
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error: ${e.toString()}'),
+                        backgroundColor: Colors.red,
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -839,7 +861,42 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
   }
 }
 
-// ==================== SUCCESS SCREEN ====================
+/// Prompt user for M-Pesa phone numbe
+Future<String?> _promptForPhoneNumber(BuildContext context) async {
+  final controller = TextEditingController(text: '+254');
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Enter M-Pesa Phone Number'),
+      content: TextField(
+        controller: controller,
+        keyboardType: TextInputType.phone,
+        decoration: const InputDecoration(
+          hintText: 'e.g. 2547XXXXXXXX',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            final value = controller.text.trim();
+            if (value.isEmpty) {
+              Navigator.of(ctx).pop(null);
+            } else {
+              Navigator.of(ctx).pop(value);
+            }
+          },
+          child: const Text('OK'),
+        ),
+      ],
+    ),
+  );
+}
+
+//SUCCESS SCREEN
 class SuccessScreen extends StatefulWidget {
   final String doctorName;
   final String departmentName;
@@ -905,8 +962,9 @@ class _SuccessScreenState extends State<SuccessScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -1027,7 +1085,7 @@ class _SuccessScreenState extends State<SuccessScreen>
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Navigate back to home - appointment already confirmed
+                    // Navigate back to home if appointment already confirmed
                     Navigator.popUntil(context, (route) => route.isFirst);
                   },
                   style: ElevatedButton.styleFrom(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:advanced_login_app/google_fonts_stub.dart';
 import 'package:advanced_login_app/providers/appointment_provider.dart';
 import 'package:advanced_login_app/providers/auth_provider.dart';
 import 'package:advanced_login_app/models/appointment_model.dart';
@@ -110,17 +110,19 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: Column(
           children: [
-            // Custom Header
+            // Header
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+                gradient: LinearGradient(
+                  colors: [colorScheme.surface, colorScheme.primaryContainer],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -177,7 +179,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
               ),
               child: TabBar(
                 controller: _tabController,
-                labelColor: const Color(0xFF6C63FF),
+                labelColor: colorScheme.primary,
                 unselectedLabelColor: Colors.white.withOpacity(0.5),
                 indicator: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
