@@ -633,6 +633,44 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> getQueuePosition({
+    required String appointmentId,
+    required String token,
+  }) async {
+    try {
+      final url = '$_baseUrl/appointments/queue-position/$appointmentId';
+      print('🔁 Getting queue position from: $url');
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.body.isEmpty) return {'success': false};
+
+      final contentType = response.headers['content-type'] ?? '';
+      if (!contentType.contains('application/json')) {
+        print('⚠️ Queue position returned non-JSON (status ${response.statusCode}): ${response.body}');
+        return {'success': false, 'raw': response.body, 'statusCode': response.statusCode};
+      }
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'currentQueuePosition': data['currentQueuePosition'],
+          'status': data['status'],
+        };
+      }
+      return {'success': false, 'error': data['error'] ?? 'Unknown'};
+    } catch (e) {
+      print('🔥 Queue position error: $e');
+      return {'success': false};
+    }
+  }
+
   // ------------------ Admin API Calls ------------------
   static Future<Map<String, dynamic>> getAdminUsers(String token) async {
     try {
@@ -731,6 +769,37 @@ class ApiService {
         return {'success': true, 'appointment': data['appointment']};
       }
       return {'success': false, 'error': data['error'] ?? 'Failed to update appointment'};
+    } catch (e) {
+      return {'success': false, 'error': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> initiateMpesaPayment({
+    required String phoneNumber,
+    required double amount,
+    String? accountReference,
+    String? transactionDesc,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/payments/mpesa/stkpush'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'phoneNumber': phoneNumber,
+          'amount': amount,
+          'accountReference': accountReference,
+          'transactionDesc': transactionDesc,
+        }),
+      );
+
+      if (response.body.isEmpty) return {'success': false, 'error': 'Empty response'};
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      }
+      return {'success': false, 'error': data['error'] ?? 'Payment initiation failed', 'data': data};
     } catch (e) {
       return {'success': false, 'error': 'Network error: $e'};
     }

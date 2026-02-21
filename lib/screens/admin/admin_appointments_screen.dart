@@ -60,6 +60,10 @@ class _AdminAppointmentsScreenState extends State<AdminAppointmentsScreen> {
                     trailing: DropdownButton<String>(
                       value: a['status'] ?? 'upcoming',
                       items: const [
+                        DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                        DropdownMenuItem(value: 'approved', child: Text('Approved')),
+                        DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
+                        DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
                         DropdownMenuItem(value: 'upcoming', child: Text('Upcoming')),
                         DropdownMenuItem(value: 'completed', child: Text('Completed')),
                         DropdownMenuItem(value: 'cancelled', child: Text('Cancelled')),

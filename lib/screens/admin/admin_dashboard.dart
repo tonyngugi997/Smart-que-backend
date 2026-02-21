@@ -112,9 +112,9 @@ class _WelcomeHeader extends StatelessWidget {
         children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Welcome back, Admin 👋', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
-              const SizedBox(height: 6),
-              Text(loading ? 'Loading stats…' : 'You have $pending pending appointments', style: const TextStyle(color: Colors.white70)),
+              const Text('Welcome back, Administrator 👋', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5)),
+              const SizedBox(height: 8),
+              Text(loading ? 'Loading stats…' : 'You have $pending pending appointments to review', style: const TextStyle(color: Colors.white70, fontSize: 14)),
               const SizedBox(height: 12),
               Wrap(spacing: 10, children: [
                 ElevatedButton.icon(onPressed: () {}, icon: const Icon(Icons.check), label: const Text('Quick Approve')),
@@ -137,10 +137,10 @@ class _MetricsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metrics = [
-      _MetricData(label: 'Users', value: stats?['usersCount']?.toString() ?? '—', icon: Icons.people, gradient: const LinearGradient(colors: [Color(0xFF4158D0), Color(0xFFC850C0)]), change: '+12%'),
-      _MetricData(label: 'Appointments', value: stats?['totalAppointments']?.toString() ?? '—', icon: Icons.event_available, gradient: const LinearGradient(colors: [Color(0xFF0093E9), Color(0xFF80D0C7)]), change: '+8%'),
-      _MetricData(label: 'Active Now', value: stats?['activeNow']?.toString() ?? '—', icon: Icons.timer, gradient: const LinearGradient(colors: [Color(0xFFFF9966), Color(0xFFFF5E62)]), change: '-3%'),
-      _MetricData(label: 'Completion', value: stats?['completionRate']?.toString() ?? '—', icon: Icons.verified, gradient: const LinearGradient(colors: [Color(0xFF11998e), Color(0xFF38ef7d)]), suffix: '%'),
+      _MetricData(label: 'Total Users', value: stats?['usersCount']?.toString() ?? '—', icon: Icons.people, gradient: const LinearGradient(colors: [Color(0xFF4158D0), Color(0xFFC850C0)]), change: '+12%'),
+      _MetricData(label: 'Total Appointments', value: stats?['totalAppointments']?.toString() ?? '—', icon: Icons.event_available, gradient: const LinearGradient(colors: [Color(0xFF0093E9), Color(0xFF80D0C7)]), change: '+8%'),
+      _MetricData(label: 'Currently Active', value: stats?['activeNow']?.toString() ?? '—', icon: Icons.timer, gradient: const LinearGradient(colors: [Color(0xFFFF9966), Color(0xFFFF5E62)]), change: '-3%'),
+      _MetricData(label: 'Completion Rate', value: stats?['completionRate']?.toString() ?? '—', icon: Icons.verified, gradient: const LinearGradient(colors: [Color(0xFF11998e), Color(0xFF38ef7d)]), suffix: '%'),
     ];
 
     if (loading) return const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Center(child: CircularProgressIndicator()));
@@ -185,9 +185,11 @@ class _ModernMetricCard extends StatelessWidget {
         padding: const EdgeInsets.all(12.0),
         child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Row(children: [
-            Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(gradient: metric.gradient, borderRadius: BorderRadius.circular(8)), child: Icon(metric.icon, color: Colors.white)),
-            const SizedBox(width: 12),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(metric.label, style: const TextStyle(fontSize: 12, color: Colors.white70)), const SizedBox(height: 6), Text('${metric.value}${metric.suffix ?? ''}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))]),
+            Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(gradient: metric.gradient, borderRadius: BorderRadius.circular(8)), child: Icon(metric.icon, color: Colors.white, size: 24)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [Text(metric.label, style: const TextStyle(fontSize: 13, color: Colors.white60, fontWeight: FontWeight.w500)), const SizedBox(height: 8), Text('${metric.value}${metric.suffix ?? ''}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5))]),
+            ),
           ]),
           if (metric.change != null)
             Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: metric.change!.startsWith('+') ? Colors.green.shade800 : Colors.orange.shade800, borderRadius: BorderRadius.circular(20)), child: Text(metric.change!, style: const TextStyle(color: Colors.white, fontSize: 12))),
@@ -234,8 +236,8 @@ class _ActivitySectionState extends State<_ActivitySection> {
     return Container(
       decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(12)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(padding: const EdgeInsets.all(16), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Live Activity', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)), TextButton(onPressed: widget.onViewAll, child: const Text('View all →'))])),
-        const Divider(height: 1),
+        Padding(padding: const EdgeInsets.all(20), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Live Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.5)), TextButton(onPressed: widget.onViewAll, child: const Text('View all →', style: TextStyle(fontWeight: FontWeight.w600)))])),
+        const Divider(height: 1, color: Color(0xFF1A2938)),
         if (loading) const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()))
         else if (activities.isEmpty) Padding(padding: const EdgeInsets.all(16), child: Text('No activity', style: TextStyle(color: Colors.white54)))
         else ListView.separated(
@@ -258,11 +260,15 @@ class _ActivitySectionState extends State<_ActivitySection> {
             }
 
             return ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              leading: CircleAvatar(backgroundColor: _getStatusColor(status).withOpacity(0.12), child: Text(initials, style: TextStyle(color: _getStatusColor(status)))),
-              title: Text(user, style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text(service, style: const TextStyle(color: Colors.white70)),
-              trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [Text(time, style: const TextStyle(fontSize: 12)), const SizedBox(height: 6), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: _getStatusColor(status).withOpacity(0.12), borderRadius: BorderRadius.circular(20)), child: Text(status, style: TextStyle(color: _getStatusColor(status), fontSize: 12)))]),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              leading: CircleAvatar(
+                radius: 20,
+                backgroundColor: _getStatusColor(status).withOpacity(0.15), 
+                child: Text(initials, style: TextStyle(color: _getStatusColor(status), fontWeight: FontWeight.w700))
+              ),
+              title: Text(user, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+              subtitle: Text(service, style: const TextStyle(color: Colors.white60, fontSize: 13)),
+              trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [Text(time, style: const TextStyle(fontSize: 12, color: Colors.white60)), const SizedBox(height: 8), Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), decoration: BoxDecoration(color: _getStatusColor(status).withOpacity(0.15), borderRadius: BorderRadius.circular(20)), child: Text(status, style: TextStyle(color: _getStatusColor(status), fontSize: 12, fontWeight: FontWeight.w600)))]),
             );
           },
         ),
@@ -307,7 +313,26 @@ class _QuickActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(onTap: onTap, child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12), decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white10)), child: Row(children: [Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(8)), child: Icon(icon, color: color)), const SizedBox(width: 10), Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)))])));
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white12, width: 1.5)
+        ),
+        child: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+            child: Icon(icon, color: color, size: 20)
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)))
+        ]),
+      )
+    );
   }
 }
 
@@ -319,7 +344,38 @@ class _StatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Flexible(child: Text(label, style: const TextStyle(color: Colors.white70))), Row(mainAxisSize: MainAxisSize.min, children: [Container(width: 8, height: 8, decoration: BoxDecoration(color: isOperational ? Colors.green.shade400 : Colors.red.shade400, shape: BoxShape.circle)), const SizedBox(width: 8), ConstrainedBox(constraints: const BoxConstraints(maxWidth: 120), child: Text(status, overflow: TextOverflow.ellipsis, style: TextStyle(color: isOperational ? Colors.green.shade300 : Colors.red.shade300)))])]);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Flexible(child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14))),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: isOperational ? Colors.green.shade400 : Colors.red.shade400,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 10),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120),
+              child: Text(
+                status,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: isOperational ? Colors.green.shade300 : Colors.red.shade300,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            )
+          ],
+        )
+      ],
+    );
   }
 }
 
@@ -343,10 +399,10 @@ class _SideNavigation extends StatelessWidget {
       color: const Color(0xFF071826),
       child: Column(children: [
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           child: Row(children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(9),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFF0A65CC), Color(0xFF5A8FD9)],
@@ -356,18 +412,21 @@ class _SideNavigation extends StatelessWidget {
               child: const Icon(
                 Icons.admin_panel_settings,
                 color: Colors.white,
+                size: 22,
               ),
             ),
-            if (isExpanded) const SizedBox(width: 10),
+            if (isExpanded) const SizedBox(width: 12),
             if (isExpanded)
-              const Text('Admin',
+              const Text('Admin Panel',
                   style: TextStyle(
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     color: Colors.white,
+                    fontSize: 15,
+                    letterSpacing: -0.5,
                   )),
           ]),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Expanded(
           child: ListView.builder(
             padding: EdgeInsets.symmetric(
@@ -437,10 +496,11 @@ class _Header extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const Text(
-            'Admin Console',
+            'Administration Console',
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
             ),
           ),
           Row(children: [

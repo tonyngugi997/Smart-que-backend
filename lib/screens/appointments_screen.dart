@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:advanced_login_app/google_fonts_stub.dart';
 import 'package:advanced_login_app/providers/appointment_provider.dart';
 import 'package:advanced_login_app/providers/auth_provider.dart';
 import 'package:advanced_login_app/models/appointment_model.dart';
+import '../services/api_service.dart';
 
 class AppointmentsScreen extends StatefulWidget {
   const AppointmentsScreen({Key? key}) : super(key: key);
@@ -16,6 +18,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = false;
+  Timer? _queueTimer;
 
   @override
   void initState() {
@@ -44,11 +47,26 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
     await Provider.of<AppointmentProvider>(context, listen: false)
         .loadAppointments();
     setState(() => _isLoading = false);
+    // Refresh queue positions immediately and start polling
+    try {
+      final provider = Provider.of<AppointmentProvider>(context, listen: false);
+      await provider.refreshAllQueuePositions();
+      _startQueuePolling();
+    } catch (_) {}
+  }
+
+  void _startQueuePolling() {
+    _queueTimer?.cancel();
+    _queueTimer = Timer.periodic(const Duration(seconds: 8), (_) async {
+      final provider = Provider.of<AppointmentProvider>(context, listen: false);
+      await provider.refreshAllQueuePositions();
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _queueTimer?.cancel();
     super.dispose();
   }
 
@@ -97,12 +115,20 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
+      case 'pending':
+        return const Color(0xFFFFC107);
+      case 'approved':
+        return const Color(0xFF00BFA6);
+      case 'in_progress':
+        return const Color(0xFF6C63FF);
       case 'upcoming':
         return const Color(0xFF00BFA6);
       case 'completed':
         return const Color(0xFF4CAF50);
       case 'cancelled':
         return const Color(0xFFFF6B6B);
+      case 'rejected':
+        return const Color(0xFFB00020);
       default:
         return const Color(0xFF6C63FF);
     }
@@ -221,8 +247,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                         final allAppointments =
                             appointmentProvider.userAppointments;
                         final upcomingAppointments = allAppointments
-                            .where((apt) => apt.status == 'upcoming')
-                            .toList();
+                          .where((apt) => ['upcoming', 'pending', 'approved', 'in_progress'].contains(apt.status))
+                          .toList();
                         final completedAppointments = allAppointments
                             .where((apt) => apt.status == 'completed')
                             .toList();
@@ -414,16 +440,22 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                   children: [
                     const Icon(Icons.queue, color: Color(0xFF6C63FF), size: 18),
                     const SizedBox(width: 8),
-                    Text(
-                      'Queue #${appointment.queueNumber}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF6C63FF),
-                      ),
+                    Consumer<AppointmentProvider>(
+                      builder: (context, provider, _) {
+                        final dynamicPos = provider.queuePositionFor(appointment.id);
+                        final display = dynamicPos != null ? '#$dynamicPos' : '#${appointment.queueNumber}';
+                        return Text(
+                          'Queue $display',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF6C63FF),
+                          ),
+                        );
+                      },
                     ),
                     const Spacer(),
-                    if (appointment.status == 'upcoming')
+                    if (appointment.status == 'upcoming' || appointment.status == 'in_progress')
                       Text(
                         _getTimeRemaining(appointment.dateTime),
                         style: GoogleFonts.poppins(
@@ -465,7 +497,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                     ],
                   ),
                 ),
-                if (appointment.status == 'upcoming') ...[
+                if (appointment.status == 'upcoming' || appointment.status == 'in_progress') ...[
                   const SizedBox(height: 15),
                   Row(
                     children: [
@@ -496,35 +528,37 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => _showRescheduleDialog(
-                            context,
-                            appointment,
-                            appointmentProvider,
-                          ),
-                          icon: const Icon(Icons.edit, size: 18),
-                          label: Text(
-                            'Reschedule',
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w600,
+                      if (appointment.status != 'pending' && appointment.status != 'approved')
+                        const SizedBox(width: 10),
+                      if (appointment.status != 'pending' && appointment.status != 'approved')
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => _showRescheduleDialog(
+                              context,
+                              appointment,
+                              appointmentProvider,
                             ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                const Color(0xFF00BFA6).withOpacity(0.2),
-                            foregroundColor: const Color(0xFF00BFA6),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              side: const BorderSide(
-                                color: Color(0xFF00BFA6),
+                            icon: const Icon(Icons.edit, size: 18),
+                            label: Text(
+                              'Reschedule',
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  const Color(0xFF00BFA6).withOpacity(0.2),
+                              foregroundColor: const Color(0xFF00BFA6),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: const BorderSide(
+                                  color: Color(0xFF00BFA6),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: ElevatedButton.icon(
@@ -554,6 +588,26 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                           ),
                         ),
                       ),
+                      // If appointment is approved, allow payment
+                      if (appointment.status == 'approved')
+                        const SizedBox(width: 10),
+                      if (appointment.status == 'approved')
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => _promptAndPay(context, appointment),
+                            icon: const Icon(Icons.payment, size: 18),
+                            label: Text('Pay', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF6C63FF).withOpacity(0.2),
+                              foregroundColor: const Color(0xFF6C63FF),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: const BorderSide(color: Color(0xFF6C63FF)),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ],
@@ -1199,6 +1253,61 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _promptAndPay(BuildContext context, Appointment appointment) {
+    final phoneController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Enter phone number'),
+        content: TextField(
+          controller: phoneController,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(hintText: '2547XXXXXXXX'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final phone = phoneController.text.trim();
+              if (phone.isEmpty) return;
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Initiating payment...')),
+              );
+
+              try {
+                final res = await ApiService.initiateMpesaPayment(
+                  phoneNumber: phone,
+                  amount: appointment.consultationFee,
+                  accountReference: 'Appointment#${appointment.id}',
+                );
+
+                if (res['success'] == true) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('STK push initiated. Check your phone.')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Payment failed: ${res['error'] ?? 'unknown'}')),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Payment error: $e')),
+                );
+              }
+            },
+            child: const Text('Pay'),
+          ),
+        ],
       ),
     );
   }

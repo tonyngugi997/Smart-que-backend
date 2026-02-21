@@ -213,8 +213,8 @@ const Appointment = sequelize.define('Appointment', {
     allowNull: false,
   },
   status: {
-    type: DataTypes.ENUM('upcoming', 'completed', 'cancelled'),
-    defaultValue: 'upcoming',
+    type: DataTypes.ENUM('pending', 'approved', 'rejected', 'upcoming', 'in_progress', 'completed', 'cancelled'),
+    defaultValue: 'pending',
   },
   consultationFee: {
     type: DataTypes.FLOAT,
@@ -1166,7 +1166,7 @@ async function startServer() {
           departmentName,
           dateTime,
           queueNumber,
-          status: 'upcoming',
+          status: 'pending',
           consultationFee: consultationFee || 0,
         });
         
@@ -1340,6 +1340,52 @@ async function startServer() {
       }
     });
 
+    // Get current queue position for a specific appointment
+    app.get('/api/appointments/queue-position/:appointmentId', async (req, res) => {
+      try {
+        const { appointmentId } = req.params;
+        console.log(`   GET /api/appointments/queue-position/${appointmentId} requested`);
+        console.log('   Authorization header:', req.headers.authorization || '<none>');
+        
+        const appointment = await Appointment.findByPk(appointmentId);
+        if (!appointment) {
+          return res.status(404).json({
+            success: false,
+            error: 'Appointment not found'
+          });
+        }
+
+        // Count pending appointments scheduled BEFORE this appointment
+        const queuePosition = await Appointment.count({
+          where: {
+            departmentName: appointment.departmentName,
+            dateTime: {
+              [Op.lte]: appointment.dateTime // Less than or equal to this appointment's time
+            },
+            status: 'upcoming',
+            id: {
+              [Op.lte]: appointment.id // If same time, count by appointment ID order
+            }
+          }
+        });
+
+        res.json({
+          success: true,
+          appointmentId,
+          currentQueuePosition: queuePosition,
+          status: appointment.status,
+          department: appointment.departmentName
+        });
+        
+      } catch (error) {
+        console.error('❌ Get queue position error:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to fetch queue position'
+        });
+      }
+    });
+
     // -------------------- ADMIN MIDDLEWARE & ENDPOINTS --------------------
     // Auth middleware to verify token and attach user
     const authMiddleware = async (req, res, next) => {
@@ -1425,7 +1471,7 @@ async function startServer() {
       try {
         const { id } = req.params;
         const { status } = req.body;
-        const allowed = ['upcoming', 'completed', 'cancelled'];
+        const allowed = ['pending', 'approved', 'rejected', 'upcoming', 'in_progress', 'completed', 'cancelled'];
         if (!allowed.includes(status)) return res.status(400).json({ success: false, error: 'Invalid status' });
 
         const appointment = await Appointment.findByPk(id);

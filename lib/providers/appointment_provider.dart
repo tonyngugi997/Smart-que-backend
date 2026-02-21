@@ -6,6 +6,7 @@ class AppointmentProvider extends ChangeNotifier {
   List<Appointment> _appointments = [];
   String? _userId;
   String? _authToken;
+  final Map<String, int> _queuePositions = {};
 
   List<Appointment> get appointments {
     _ensureAppointmentListType();
@@ -16,7 +17,7 @@ class AppointmentProvider extends ChangeNotifier {
     _ensureAppointmentListType();
     final now = DateTime.now();
     return _appointments
-        .where((apt) => apt.dateTime.isAfter(now) && apt.status == 'upcoming')
+        .where((apt) => apt.dateTime.isAfter(now) && ['upcoming', 'pending', 'approved', 'in_progress'].contains(apt.status))
         .toList()
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
   }
@@ -78,6 +79,29 @@ class AppointmentProvider extends ChangeNotifier {
       }
       _appointments = [];
       notifyListeners();
+    }
+  }
+
+  int? queuePositionFor(String appointmentId) => _queuePositions[appointmentId];
+
+  Future<void> refreshQueuePosition(String appointmentId) async {
+    if (_authToken == null) return;
+    try {
+      final res = await ApiService.getQueuePosition(appointmentId: appointmentId, token: _authToken!);
+      if (res['success'] == true && res['currentQueuePosition'] != null) {
+        final pos = int.tryParse(res['currentQueuePosition'].toString()) ?? 0;
+        _queuePositions[appointmentId] = pos;
+        notifyListeners();
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error refreshing queue position: $e');
+    }
+  }
+
+  Future<void> refreshAllQueuePositions() async {
+    final ids = _appointments.map((a) => a.id).toList();
+    for (final id in ids) {
+      await refreshQueuePosition(id);
     }
   }
 

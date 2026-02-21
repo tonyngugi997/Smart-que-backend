@@ -698,41 +698,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
                       );
                     }
 
-                    //initiate STK push first
-                    if (paymentMethod == 'pay_now') {
-                      final phone = await _promptForPhoneNumber(context);
-                      if (phone == null) return;
-
-                      final mpesaResult =
-                          await ApiService.initiateMpesaStkPush(
-                        phoneNumber: phone,
-                        amount: 1500,
-                        accountReference:
-                            'APT-${DateTime.now().millisecondsSinceEpoch}',
-                        transactionDesc:
-                            'Appointment with ${widget.doctorName}',
-                      );
-
-                      if (mpesaResult['success'] != true) {
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text(
-                                mpesaResult['error'] ??
-                                    'Failed to initiate M-Pesa payment',
-                                ),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                              'M-Pesa STK push sent. Please complete payment on your phone.'),
-                        ),
-                      );
-                    }
+                    // Payment is performed after admin approval. Do not initiate STK here.
 
                     // Proceed to book appointment
                     final success = await appointmentProvider.bookAppointment(
@@ -992,7 +958,7 @@ class _SuccessScreenState extends State<SuccessScreen>
               ),
               const SizedBox(height: 32),
               const Text(
-                'Appointment Confirmed!',
+                'Appointment Requested',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -1080,6 +1046,24 @@ class _SuccessScreenState extends State<SuccessScreen>
                 ),
               ),
               const SizedBox(height: 32),
+              // Info about approval and payment
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: widget.departmentColor.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'Your booking request has been sent and is pending approval by the clinic. You will be notified when it is approved. Payment is requested only after approval.',
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               // Action Buttons
               SizedBox(
                 width: double.infinity,
